@@ -1,5 +1,8 @@
 *.class
 
+# codenvy
+.codenvy/
+
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 

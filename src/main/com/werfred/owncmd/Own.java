@@ -1,4 +1,4 @@
-package it.savardi.owncmd;
+package com.werfred.owncmd;
 
 public class Own {
 }

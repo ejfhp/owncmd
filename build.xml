@@ -29,7 +29,7 @@
 	<target name="build" depends="javac" description="Build this project" />
 	
 	<target name="jar" depends="build" description="Create a jar file">
-		<jar destfile="own-cmd.jar" basedir="build/main" manifest="conf/MANIFEST.MF"/>
+		<jar destfile="owncmd.jar" basedir="build/main" manifest="conf/MANIFEST.MF"/>
 	</target>
 	
 	<target name="clean" description="Cleans this project">

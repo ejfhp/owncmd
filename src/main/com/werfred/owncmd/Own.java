@@ -1,5 +1,9 @@
 package com.werfred.owncmd;
 
+import org.telegram.telegrambots.TelegramApiException;
+import org.telegram.telegrambots.TelegramBotsApi;
+
+import com.werfred.owncmd.bot.OwnBot;
 import com.werfred.owncmd.bus.Server;
 
 public class Own {
@@ -28,6 +32,16 @@ public class Own {
 		String message = args[3];
 		Server server = new Server(address, port);
 		server.sendCommand(message);
+	}
+	
+	private static void startBot(String[] args) throws Exception {
+	     TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
+         try {
+             telegramBotsApi.registerBot(new OwnBot());
+
+         } catch (TelegramApiException e) {
+             e.printStackTrace();
+         }
 	}
 	
 	private static void printUsage() {

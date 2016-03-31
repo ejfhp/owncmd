@@ -3,8 +3,8 @@ package com.werfred.owncmd;
 import org.telegram.telegrambots.TelegramApiException;
 import org.telegram.telegrambots.TelegramBotsApi;
 
-import com.werfred.owncmd.bot.OwnBot;
 import com.werfred.owncmd.bus.Server;
+import com.werfred.owncmd.telegram.OwnBot;
 
 public class Own {
 	private static String CMD_SEND_COMMAND = "SEND_COMMAND";

@@ -1,40 +1,155 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<project name="own-cmd" default="build" basedir=".">
-	<!-- Arguments to gwtc and devmode targets -->
+<project name="tilegen" default="war" basedir=".">
 
-   <path id="project.class.path">
-        <!--  <pathelement location="lib_mapscript/mapscript.jar" /> -->
-        <!--  <pathelement location="lib_mapscript/libmapscript.so" /> -->
-        <!-- Add any additional non-server libs (such as JUnit) -->
-        <pathelement location="/usr/share/java/mapscript.jar" />
-        <pathelement location="/usr/lib/jni/libjavamapscript.so" />
-        <fileset dir="lib" includes="**/*.jar" />
-   </path>
+	<!-- Fail if profile not set -->
+        <fail unless="profile">Profile must be set: -Dprofile={beta|production}</fail> 
 
-   <target name="javac" description="Compile java source to bytecode">
-        <mkdir dir="build/main" />
-        <javac srcdir="src/main" includes="**" includeantruntime="false" encoding="utf-8" destdir="build/main" source="1.7" target="1.7" >
-                <classpath refid="project.class.path" />
-        </javac>
-   </target>
+        <property name="dir.src.main" location="src/main" />
+        <property name="dir.src.test.unit" location="src/test/unit" />
+        <property name="dir.src.test.integration" location="src/test/integration" />
+        <property name="dir.src.test.resource" location="src/test/resource" />
+        <property name="dir.build.main" location="build/main" />
+        <property name="dir.build.test.unit" location="build/test/unit" />
+        <property name="dir.build.test.integration" location="build/test/integration" />
+        <property name="dir.build.test.resource" location="build/test/resource" />
 
-	<target name="javac.tests" depends="javac" description="Compiles test code">
-	  <javac srcdir="src/test" includes="**" encoding="utf-8" source="1.7" target="1.7" nowarn="true" destdir="build/test" debug="true" debuglevel="lines,vars,source">
-	    <classpath location="path_to_the_junit_jar"/>
-	    <classpath refid="project.class.path"/>
-	  </javac>
-	</target>
-  
+
+        <property name="java.library.path" location="/usr/lib/jni/libjavamapscript.so" />
+	<path id="classpath.deploy">
+                <pathelement location="/usr/share/java/mapscript.jar" />
+                <fileset dir="lib" includes="**/*.jar" />
+	</path>
 	
-	<target name="build" depends="javac" description="Build this project" />
-	
-	<target name="jar" depends="build" description="Create a jar file">
-		<jar destfile="owncmd.jar" basedir="build/main" manifest="conf/MANIFEST.MF"/>
+        <target name="version">
+                <exec dir="." executable="git" os="Linux" output="current_version.txt">
+                        <arg line="describe" />
+                </exec>
+                <exec dir="." executable="date" os="Linux" output="last_build.txt">
+                        <arg line="" />
+                </exec>
+        </target>
+
+	<target name="copy.conf" description="Copy configuration files" if="profile" >
+		<mkdir dir="${dir.build.main}" />
+		<copy todir="${dir.build.main}" overwrite="true">
+			<fileset dir="conf/${profile}/" includes="*" />
+		</copy> 
+	</target>
+
+	<target name="copy.test.resource" description="Copy resource files for test" if="profile" >
+		<mkdir dir="${dir.build.test.resource}" />
+		<copy todir="${dir.build.test.resource}" overwrite="true">
+			<fileset dir="${dir.src.test.resource}" includes="*" />
+		</copy> 
+	</target>
+
+	<target name="javac" depends="version,copy.conf" description="Compile java source to bytecode">
+		<javac srcdir="${dir.src.main}" includes="**" encoding="utf-8" destdir="${dir.build.main}" source="1.7" target="1.7" nowarn="true" debug="true" debuglevel="lines,vars,source" fork="true" includeAntRuntime="false">
+			<classpath refid="classpath.deploy" />
+		</javac>
 	</target>
 	
-	<target name="clean" description="Cleans this project">
-		<delete dir="build/main" failonerror="false" />
-      <delete dir="build/test" failonerror="false" />
-	</target>
+
+        <target name="jar" depends="javac" description="Create jar files">
+                <jar destfile="tremaps-entity.jar" basedir="${dir.build.main}" manifest="${dir.build.main}/MANIFEST.MF" includes="com/treuropa/tremaps/gcd/**/*"/>
+                <jar destfile="tilegen.jar" basedir="${dir.build.main}" manifest="${dir.build.main}/MANIFEST.MF" includes="com/treuropa/tremaps/loader/**/*"/>
+        </target>
+
+
+
+        <!--####### TEST START #######-->
+
+        <path id="classpath.test">
+		<fileset dir="lib/test" includes="**/*.jar" />
+                <pathelement location="${dir.build.test.resource}" />
+	</path>
+
+        <target name="test.unit" depends="javac,copy.test.resource">
+		<fail message="Tests run only with profile equals to 'beta'">
+			<condition>
+				<not>
+					<equals arg1="${profile}" arg2="beta"/>
+				</not>
+			</condition>
+		</fail>
+                <mkdir dir="${dir.build.test.unit}" />
+                <copy todir="${dir.build.test.unit}" overwrite="true">
+                        <fileset dir="conf/${profile}/" includes="*" />
+                </copy>
+                <javac srcdir="${dir.src.test.unit}" includes="**" encoding="utf-8" destdir="${dir.build.test.unit}" source="1.7" target="1.7" nowarn="true" debug="true" debuglevel="lines,vars,source" includeantruntime="true">
+                        <classpath>
+                                <pathelement location="${dir.build.main}" />
+                                <path refid="classpath.deploy" />
+                                <path refid="classpath.test" />
+                        </classpath>
+                </javac>
+                <junit haltonerror="off" haltonfailure="off" showoutput="off" fork="on" printsummary="on" includeantruntime="true">
+			<sysproperty key="java.library.path" path="/usr/lib/jni/"/>
+                        <formatter type="plain"/>
+                        <classpath>
+                            <path refid="classpath.deploy" />
+                            <path refid="classpath.test" />
+                            <pathelement location="${dir.build.test.unit}" />
+                            <pathelement location="${dir.build.main}" />
+                        </classpath>
+                        <batchtest fork="yes" todir="${dir.build.test.unit}">
+                          <fileset dir="${dir.build.test.unit}">
+                            <include name="**/*Test*.class"/>
+                          </fileset>
+                        </batchtest>
+                </junit>
+        </target>
+
+        <target name="test.integration" depends="javac,test.unit" description="Compile integration test">
+		<fail message="Tests run only with profile equals to 'beta'">
+			<condition>
+				<not>
+					<equals arg1="${profile}" arg2="beta"/>
+				</not>
+			</condition>
+		</fail>
+                <mkdir dir="${dir.build.test.integration}" />
+                <copy todir="${dir.build.test.integration}" overwrite="true">
+                        <fileset dir="conf/${profile}/" includes="*" />
+                </copy>
+                <javac srcdir="${dir.src.test.integration}" includes="**" encoding="utf-8" destdir="${dir.build.test.integration}" source="1.7" target="1.7" nowarn="true" debug="true" debuglevel="lines,vars,source" includeantruntime="true">
+                        <classpath>
+                                <pathelement location="${dir.build.main}" />
+                            	<pathelement location="${dir.build.test.unit}" />
+                                <path refid="classpath.deploy" />
+                                <path refid="classpath.test" />
+                        </classpath>
+                </javac>
+                <junit haltonerror="off" haltonfailure="off" showoutput="off" fork="on" printsummary="on" includeantruntime="true">
+                        <formatter type="plain"/>
+                        <classpath>
+                            <path refid="classpath.deploy" />
+                            <path refid="classpath.test" />
+                            <pathelement location="${dir.build.test.unit}" />
+                            <pathelement location="${dir.build.test.integration}" />
+                            <pathelement location="${dir.build.main}" />
+                        </classpath>
+                        <batchtest fork="yes" todir="${dir.build.test.integration}">
+                          <fileset dir="${dir.build.test.integration}">
+                            <include name="**/*Test*.class"/>
+                          </fileset>
+                        </batchtest>
+                </junit>
+        </target>
+
+
+        <target name="test" depends="test.unit,test.integration" description="Runs all the tests"/>
+
+        <!--####### TEST END #######-->
+
+
+        <target name="clean" description="Cleans this project">
+                <delete dir="${dir.build.main}" failonerror="false" />
+                <delete dir="${dir.build.test.unit}" failonerror="false" />
+                <delete dir="${dir.build.test.integration}" failonerror="false" />
+                <delete dir="${dir.build.test.resource}" failonerror="false" />
+                <delete file="tremaps-entity.jar" />
+                <delete file="tilegen.jar" />
+        </target>
 
 </project>

@@ -1,7 +1,6 @@
 package com.werfred.owncmd.telegram;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -19,9 +18,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.werfred.owncmd.telegram.entity.Response;
 
 public class ConnectorRunnable implements Runnable {
 
@@ -39,20 +36,22 @@ public class ConnectorRunnable implements Runnable {
 		String token = "217402569:AAEarXEiKrWgXrzqnUR3vOgiTPrydVD0sWI";
 		String url = "https://api.telegram.org/bot" + token + "/" + "getUpdates";
 		HttpGet httpGet = new HttpGet(url);
-		CloseableHttpResponse response = httpclient.execute(httpGet);
+		CloseableHttpResponse httpResponse = httpclient.execute(httpGet);
 
 		String responseContent = "";
 		try {
-			System.out.println(response.getStatusLine());
-			if (response.getStatusLine().getStatusCode() == 200) {
-				HttpEntity entity = response.getEntity();
+			System.out.println("Status:" + httpResponse.getStatusLine());
+			if (httpResponse.getStatusLine().getStatusCode() == 200) {
+				HttpEntity entity = httpResponse.getEntity();
 				BufferedHttpEntity buf = new BufferedHttpEntity(entity);
 				responseContent = EntityUtils.toString(buf, "UTF-8");
+				System.out.println("Response:" + responseContent);
 				Gson gson = new Gson();
-				JsonObject jsonArray = gson.fromJson(responseContent, JsonObject.class);
+				Response response = gson.fromJson(responseContent, Response.class);
 				
 				
-				System.out.println("EL: " + jsonArray.toString());
+				System.out.println("EL: OK=" + response.getOk());
+				System.out.println("EL: OK=" + response.getResult()[0].getUpdateID());
 //				Iterator<JsonElement> itJ = jsonArray.iterator();
 //				while (itJ.hasNext()) {
 //					JsonElement element = itJ.next();
@@ -61,7 +60,7 @@ public class ConnectorRunnable implements Runnable {
 			}
 
 		} finally {
-			response.close();
+			httpResponse.close();
 		}
 		return responseContent;
 	}
